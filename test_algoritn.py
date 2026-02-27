@@ -44,29 +44,119 @@ def format_matrix(matrix, new_width, new_height):
     w = new_width[0]
     h = new_height
 
-    if h != 0:
+    if h >= 2:
         for (i,element) in enumerate(matrix):
             new_matrix.append(element[w:])
             if i == h:
                 break
     else:
-        new_matrix.append(matrix[0][w:])
-        new_matrix.append(matrix[1][w:])
+        if h == 1:
+            for (i, m) in enumerate(matrix):
+                if i == 0:
+                    new_matrix.append(m[w:])
+                else:
+                    new_matrix.append(m[w-1:])
+        if h == 0:
+            for m in matrix:
+                new_matrix.append(m[w:])
 
     return new_matrix
+
+def check_pattern(matrix, pos):
+    '''Функция для определения патерна и составления рекомендации для ставки'''
+
+    who_to_bid = None
+    current_list = matrix[pos]
+    prev_winner = current_list[len(current_list) - 1]
+
+    # Определение переменных для обычных случаев
+    if pos >= 2:
+        previous_list2 = matrix[pos-2]
+        previous_list1 = matrix[pos-1]
+    else:
+        # Определение переменных для первой строки
+        if pos == 1:
+            previous_list2 = matrix[len(matrix)-1]
+            previous_list1 = matrix[pos - 1]
+        # Определение переменных для нулевой строки
+        if pos == 0:
+            previous_list2 = matrix[len(matrix) - 2]
+            previous_list1 = matrix[len(matrix) - 1]
+
+
+    if 'T' in previous_list1 or 'T' in previous_list2 or 'T' in current_list:
+        return (0, who_to_bid)
+
+    is_all_same2 = previous_list2.count(previous_list2[0]) == len(previous_list2)
+    is_all_same1 = previous_list1.count(previous_list1[0]) == len(previous_list1)
+
+    # Проверяем на красивый патерн
+    if is_all_same1 and is_all_same2:
+        # Делаем ставку на тот же цвет
+        who_to_bid = prev_winner
+        return (1, who_to_bid)
+    # Проверяем на не красивый патерн
+    elif not is_all_same1 and not is_all_same2:
+        # Делаем ставку на противоположный цвет
+        if prev_winner == 'P':
+            who_to_bid = 'B'
+        if prev_winner == 'B':
+            who_to_bid = 'P'
+        return (2, who_to_bid)
+    # Проверяем на качели
+    else:
+        # Если последним был Крассивый патерн, то ставим на некрасивый
+        if is_all_same1:
+            if prev_winner == 'P':
+                who_to_bid = 'B'
+            if prev_winner == 'B':
+                who_to_bid = 'P'
+        # Если последним был не Крассивый патерн, то ставим на крассивый
+        else:
+            who_to_bid = prev_winner
+        return (3, who_to_bid)
+
+def pattern_review(code, bid):
+    formated_bid = None
+
+    if bid == 'B':
+        formated_bid = 'Банкир'
+    if bid == 'P':
+        formated_bid = 'Игрок'
+    if bid is None:
+        formated_bid = 'Не определенно'
+
+    if code == 0:
+        print(f'Алгоритм встретил ничью и пропускает текущую серию.  |  Ставка на: {formated_bid}')
+    elif code == 1:
+        print(f'Алгоритм определил две красивые серии подряд.  |  Ставка на: {formated_bid}')
+    elif code == 2:
+        print(f'Алгоритм определил две НЕ красивые серии подряд.  |  Ставка на: {formated_bid}')
+    elif code == 3:
+        print(f'Алгоритм определил Качели.  |  Ставка на: {formated_bid}')
+    else:
+        print('Алгоритм не смог найти ни один патерн')
 
 def main_process():
     '''Основная функция для работы алгоритма'''
 
-    #Считывание текущих фишек Биг-Роуд
+    # Считывание текущих фишек Биг-Роуд
     current_matrix = read_current_matrix()
 
-    #Получение позиций из матрицы
+    # Получение позиций из матрицы
     current_cursor, formated_matrix_len = get_current_position(current_matrix)
 
-    #Форматирование матрицы и отбрасывания лишних значений
+    # Форматирование матрицы и отбрасывания лишних значений
     current_matrix = format_matrix(current_matrix, formated_matrix_len, current_cursor)
+
+    # Определение текущего патерна и рекомендации для ставки
+    pattern_code, current_bid = check_pattern(current_matrix, current_cursor)
+
+    print('='*100)
     pprint.pp(current_matrix)
+    print()
+    pattern_review(pattern_code, current_bid)
+    print('=' * 100)
 
 if __name__ == "__main__":
     main_process()
