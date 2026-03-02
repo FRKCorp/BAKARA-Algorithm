@@ -2,7 +2,7 @@ import pprint
 import random
 import time
 
-import test_algoritn
+import main_algorithm
 
 element_list = ['P', 'B', 'T']
 counter = 0
@@ -71,14 +71,14 @@ def main_realize():
     input()
 
     while True:
-        time.sleep(20)
+        time.sleep(10)
 
         added_val = write_new_element_to_file()
         print()
         print('*'*100)
         print(f'Добавлен новый элемент - {added_val}')
         print('Применяем алгоритм к текущей матрицы:')
-        test_algoritn.main_process()
+        main_algorithm.main_process()
         print('*' * 100)
         print()
 
