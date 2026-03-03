@@ -6,7 +6,7 @@ import main_algorithm
 
 element_list = ['P', 'B', 'T']
 counter = 0
-filename = 'example-input/response-example.txt'
+filename = '../example-input/response-example.txt'
 
 def read_current_matrix():
     '''Функция для чтения текущих данных из файла'''

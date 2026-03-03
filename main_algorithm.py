@@ -3,19 +3,19 @@ import pprint
 
 response_file = 'example-input/response-example.txt'
 
-def read_current_matrix():
-    '''Функция для чтения данных из файла'''
-
-    with open(response_file, 'r', encoding='utf-8') as file:
-        lines = file.readlines()
-        matrix = []
-        for line in lines:
-            line_list = line.split(' ')
-            formated_list = []
-            for el in line_list:
-                formated_list.append(el.strip())
-            matrix.append(formated_list)
-        return matrix
+# def read_current_matrix():
+#     '''Функция для чтения данных из файла'''
+#
+#     with open(response_file, 'r', encoding='utf-8') as file:
+#         lines = file.readlines()
+#         matrix = []
+#         for line in lines:
+#             line_list = line.split(' ')
+#             formated_list = []
+#             for el in line_list:
+#                 formated_list.append(el.strip())
+#             matrix.append(formated_list)
+#         return matrix
 
 def get_current_position(matrix):
     '''Функция для получения текущей позиции(куда нужно ставить фишку)'''
@@ -137,26 +137,38 @@ def pattern_review(code, bid):
     else:
         print('Алгоритм не смог найти ни один патерн')
 
-def main_process():
+def check_for_len(matrix):
+    '''Функция для проверки длины матрицы'''
+
+    len_sum = 0
+    for l in matrix:
+        len_sum += len(l)
+
+    if len_sum < 8:
+        return False
+    else:
+        return True
+
+def main_process(matrix):
     '''Основная функция для работы алгоритма'''
 
     # Считывание текущих фишек Биг-Роуд
-    current_matrix = read_current_matrix()
+    current_matrix = matrix
 
-    # Получение позиций из матрицы
-    current_cursor, formated_matrix_len = get_current_position(current_matrix)
+    # Проверка на длину матрицы
+    if check_for_len(current_matrix):
+        # Получение позиций из матрицы
+        current_cursor, formated_matrix_len = get_current_position(current_matrix)
 
-    # Форматирование матрицы и отбрасывания лишних значений
-    current_matrix = format_matrix(current_matrix, formated_matrix_len, current_cursor)
+        # Форматирование матрицы и отбрасывания лишних значений
+        current_matrix = format_matrix(current_matrix, formated_matrix_len, current_cursor)
 
-    # Определение текущего патерна и рекомендации для ставки
-    pattern_code, current_bid = check_pattern(current_matrix, current_cursor)
+        # Определение текущего патерна и рекомендации для ставки
+        pattern_code, current_bid = check_pattern(current_matrix, current_cursor)
 
-    print('='*100)
-    pprint.pp(current_matrix)
-    print()
-    pattern_review(pattern_code, current_bid)
-    print('=' * 100)
-
-if __name__ == "__main__":
-    main_process()
+        print('='*100)
+        pattern_review(pattern_code, current_bid)
+        print('=' * 100)
+    else:
+        print('Недостаточно завершённых серий для анализа')
+        print('Алгоритм начнёт работу с восьмой завершённой серии')
