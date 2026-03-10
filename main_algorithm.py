@@ -116,27 +116,6 @@ def check_pattern(matrix, pos):
             who_to_bid = prev_winner
         return (3, who_to_bid)
 
-def pattern_review(code, bid):
-    formated_bid = None
-
-    if bid == 'B':
-        formated_bid = 'Банкир'
-    if bid == 'P':
-        formated_bid = 'Игрок'
-    if bid is None:
-        formated_bid = 'Не определенно'
-
-    if code == 0:
-        print(f'Алгоритм встретил ничью и пропускает текущую серию.  |  Ставка на: {formated_bid}')
-    elif code == 1:
-        print(f'Алгоритм определил две красивые серии подряд.  |  Ставка на: {formated_bid}')
-    elif code == 2:
-        print(f'Алгоритм определил две НЕ красивые серии подряд.  |  Ставка на: {formated_bid}')
-    elif code == 3:
-        print(f'Алгоритм определил Качели.  |  Ставка на: {formated_bid}')
-    else:
-        print('Алгоритм не смог найти ни один патерн')
-
 def check_for_len(matrix):
     '''Функция для проверки длины матрицы'''
 
@@ -148,6 +127,26 @@ def check_for_len(matrix):
         return False
     else:
         return True
+
+def get_last_element(matrix):
+    """Функция для получения последнего элемента матрицы"""
+    lens_arr = []
+    for l in matrix:
+        lens_arr.append(len(l))
+
+    is_all_same = lens_arr.count(lens_arr[0]) == len(lens_arr)
+
+    if is_all_same:
+        r_id = len(matrix)-1
+        return matrix[r_id][len(matrix[r_id])-1]
+    else:
+        last_id = 0
+        for (i,l) in enumerate(lens_arr):
+            if i > 0:
+                if l != lens_arr[i-1]:
+                    last_id = i-1
+                    break
+        return matrix[last_id][len(matrix[last_id])-1]
 
 def main_process(matrix):
     '''Основная функция для работы алгоритма'''
@@ -166,9 +165,9 @@ def main_process(matrix):
         # Определение текущего патерна и рекомендации для ставки
         pattern_code, current_bid = check_pattern(current_matrix, current_cursor)
 
-        print('='*100)
-        pattern_review(pattern_code, current_bid)
-        print('=' * 100)
+        # Определение последнего выйгрыша, для расчёта победы или пройгрыша алгоритма
+        last_win = get_last_element(current_matrix)
+
+        return pattern_code, current_bid, last_win
     else:
-        print('Недостаточно завершённых серий для анализа')
-        print('Алгоритм начнёт работу с восьмой завершённой серии')
+        return -1, -1, -1

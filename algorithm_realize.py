@@ -69,14 +69,77 @@ def write_new_element_to_file():
 
     return el_to_write
 
-def main_realize(data_list: list):
-    matrix = read_current_matrix(data_list)
-    print('*' * 100)
-    print(f'Изменение в Биг-Роуд')
-    print('Применяем алгоритм к текущей матрице:')
-    pprint.pp(matrix)
-    main_algorithm.main_process(matrix)
-    print('*' * 100)
+def pattern_review(code, bid):
+    formated_bid = None
 
-if __name__ == "__main__":
-    main_realize()
+    if bid == 'B':
+        formated_bid = 'Банкир'
+    if bid == 'P':
+        formated_bid = 'Игрок'
+    if bid is None:
+        formated_bid = 'Не определенно'
+
+    if code == 0:
+        print(f'Алгоритм встретил ничью и пропускает текущую серию.  |  Ставка на: {formated_bid}')
+    elif code == 1:
+        print(f'Алгоритм определил две красивые серии подряд.  |  Ставка на: {formated_bid}')
+    elif code == 2:
+        print(f'Алгоритм определил две НЕ красивые серии подряд.  |  Ставка на: {formated_bid}')
+    elif code == 3:
+        print(f'Алгоритм определил Качели.  |  Ставка на: {formated_bid}')
+    else:
+        print('Алгоритм не смог найти ни один патерн')
+
+def main_realize(data_list: list, algorithm_stat):
+    """Реализация алгоритма к текущему Биг-Роуд"""
+
+    # Форматирование текущего Биг-Роуд к матрице
+    matrix = read_current_matrix(data_list)
+
+    # Применение алгоритма к текущей матрице, и получение определённого патерна, ожидаемой ставки и последнего выйгрыша
+    pattern, bid, last_win = main_algorithm.main_process(matrix)
+    print('*' * 100)
+    print(f'Изменение в Биг-Роуд:')
+    print()
+    if pattern > 0:
+        if algorithm_stat.tieStreak:
+            algorithm_stat.tieStreak = False
+        # Проверка на первый ход алгоритма
+        if algorithm_stat.check_first_turn(bid):
+            print(f'Первый, ход, алгоритм предлагает ставить на: {bid}')
+        else:
+            # Определение Победы или Поражения алгоритма в прошлой серии
+            win_or_lose = algorithm_stat.check_win(last_win, bid)
+            if win_or_lose:
+                print(f'Алгоритм ПОБЕДИЛ в прошлой ставке, его статистика:')
+            else:
+                print(f'Алгоритм ПРОИГРАЛ в прошлой ставке, его статистика:')
+            algorithm_stat.print_stat()
+            print()
+            print('-'*50)
+            print()
+            print('Следующая ставка:')
+            pattern_review(pattern, bid)
+    else:
+        if pattern == 0:
+            if algorithm_stat.gamesCounter != 0:
+                if not algorithm_stat.tieStreak:
+                    algorithm_stat.calculate_tie()
+                    print(f'Алгоритм ПРОИГРАЛ в прошлой ставке, его статистика:')
+                    algorithm_stat.print_stat()
+                    print()
+                    print('-' * 50)
+                    print()
+                    pattern_review(pattern, bid)
+                else:
+                    pattern_review(pattern, bid)
+            else:
+                pattern_review(pattern, bid)
+        else:
+            print('Недостаточно завершённых серий для анализа')
+            print('Алгоритм начнёт работу с восьмой завершённой серии')
+
+    print('*' * 100)
+    print()
+    print()
+    print()

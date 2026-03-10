@@ -2,12 +2,15 @@ from playwright.sync_api import sync_playwright
 import json
 import os
 
-import algorithm_realize
+import algorithm_realize, AlgorithmClass
 
 TABLE_URL = "https://fortunazone.com/ru/play/998/baccarat--tc654mda5h6kit2c"
 AUTH_FILE = "../BAKARA-Algorithm/authentications/auth.json"
 
 results = []
+
+# Переменная для объекта класса, для отслеживания статистики работы алгоритма
+algorithm_instance = None
 
 
 def convert(winner: str) -> str | None:
@@ -36,7 +39,7 @@ def handle_message(frame: str):
     Обрабатывает входящее сообщение WebSocket.
     Парсит JSON и извлекает результаты игры.
     """
-    global results
+    global results, algorithm_instance
 
     try:
         data = json.loads(frame)
@@ -54,8 +57,12 @@ def handle_message(frame: str):
             letter = convert(game.get("winner"))
             if letter:
                 results.append(letter)
+
+        if algorithm_instance is None:
+            algorithm_instance = AlgorithmClass.Algorythm()
+
         # Вызываем срабатывание алгоритма для новых значений
-        algorithm_realize.main_realize(results)
+        algorithm_realize.main_realize(results, algorithm_instance)
 
     # Новый результат раунда
     if msg_type in ["baccarat.gameResult", "baccarat.roundResult"]:
@@ -99,5 +106,7 @@ def run_bot():
 
         print("📡 Ожидание данных...")
         page.wait_for_timeout(600000)  # 10 минут
+
+
 
 
