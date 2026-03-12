@@ -4,8 +4,8 @@ from PyQt5.QtWidgets import (
     QApplication, QWidget, QPushButton, QVBoxLayout, QGridLayout,
     QScrollArea, QGraphicsOpacityEffect, QHBoxLayout, QSizePolicy, QLabel, QFrame, QComboBox, QMessageBox,
 )
-from PyQt5.QtGui import QPainter, QColor, QBrush, QFont, QIcon
-from PyQt5.QtCore import Qt, QRectF, QPointF, QEasingCurve, QPropertyAnimation, QSize, QRect, QTimer
+from PyQt5.QtGui import QPainter, QColor, QBrush, QFont, QIcon, QLinearGradient
+from PyQt5.QtCore import Qt, QRectF, QPointF, QEasingCurve, QPropertyAnimation, QSize, QRect, QTimer, qWarning, QPoint
 
 import sys
 import math
@@ -226,6 +226,130 @@ class HorizontalLabel(QWidget):
             self.show_warning("gg")
 
 
+class GreetingsPal(QWidget):
+    def __init__(self, parent=None, login_="Саня Маляр", psw_="qwerty"):
+        super().__init__(parent)
+        self.setStyleSheet("background-color: rgb(23, 20, 37);")
+        self.resize(500, 200)
+        self.setMaximumSize(500, 200)
+        self.login_ = login_
+        self.psw_ = psw_
+
+        self.main_vlayout = QVBoxLayout(self)
+
+        self.welcome_txt = QPushButton(self)
+        self.welcome_txt.setObjectName("welcome_txt")
+        self.welcome_txt.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: white;
+                border: none;
+            }
+        """)
+        font = QFont("Comfortaa", 17, QFont.Bold)
+        self.welcome_txt.setFont(font)
+        self.welcome_txt.setText("♧ Добро пожаловать в Baccarat ♧")
+        self.main_vlayout.addWidget(self.welcome_txt, alignment=Qt.AlignTop)
+
+        self.login_txt = QPushButton(self)
+        self.login_txt.setObjectName("login_txt")
+        self.login_txt.setStyleSheet(
+            "background-color: transparent; color: #8175BB; border: none;")
+        font_login_psw = QFont("Comfortaa", 15, QFont.Bold)
+        self.login_txt.setFont(font_login_psw)
+        self.login_txt.setText("Логин:")
+
+        self.login_val = QPushButton(self)
+        self.login_val.setObjectName("login_val")
+        self.login_val.setStyleSheet("background-color: transparent; color: white; border: none;")
+        font_val = QFont("Comfortaa", 13, QFont.Bold)
+        self.login_val.setFont(font_val)
+        self.login_val.setText("⇾  " + "Саня Маляр" + "  ⇽")
+
+        login_layout = QHBoxLayout(self)
+        login_layout.addWidget(self.login_txt, alignment=Qt.AlignLeft)
+        login_layout.addWidget(self.login_val, alignment=Qt.AlignLeft)
+        login_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.psw_txt = QPushButton(self)
+        self.psw_txt.setObjectName("psw_txt")
+        self.psw_txt.setStyleSheet(
+            "background-color: transparent; color: #8175BB; border: none;")
+        font_login_psw = QFont("Comfortaa", 15, QFont.Bold)
+        self.psw_txt.setFont(font_login_psw)
+        self.psw_txt.setText("Пароль:")
+
+        self.psw_val = QPushButton(self)
+        self.psw_val.setObjectName("psw_val")
+        self.psw_val.setStyleSheet(
+            "background-color: transparent; color: white; border: none;")
+        font_val = QFont("Comfortaa", 13, QFont.Bold)
+        self.psw_val.setFont(font_val)
+        self.psw_val.setText(f"{"♢" * len(self.psw_)}")
+        self.psw_val.clicked.connect(self.changeVisibility)
+
+        login_layout = QHBoxLayout(self)
+        login_layout.addWidget(self.login_txt, alignment=Qt.AlignLeft)
+        login_layout.addWidget(self.login_val)
+        login_layout.setContentsMargins(50, 0, 20, 0)
+        login_layoutWrapper = QWidget()
+        login_layoutWrapper.setLayout(login_layout)
+
+        psw_layout = QHBoxLayout(self)
+        psw_layout.addWidget(self.psw_txt, alignment=Qt.AlignLeft)
+        psw_layout.addWidget(self.psw_val)
+        psw_layout.setContentsMargins(50, 0, 20, 0)
+        psw_layoutWrapper = QWidget()
+        psw_layoutWrapper.setLayout(psw_layout)
+        login_layoutWrapper.setStyleSheet("background-color: transparent;")
+        psw_layoutWrapper.setStyleSheet("background-color: transparent;")
+        self.main_vlayout.addWidget(login_layoutWrapper)
+        self.main_vlayout.addWidget(psw_layoutWrapper)
+
+        self.enter_btn = QPushButton(self)
+        self.enter_btn.setObjectName('enter_btn')
+        self.enter_btn.setStyleSheet(
+            "background-color: transparent; color: white; border: none; text-decoration: underline")
+        self.enter_btn.setText("Продолжить")
+        self.enter_btn.setFont(font_val)
+        self.main_vlayout.addWidget(self.enter_btn)
+        self.enter_btn.clicked.connect(self.startThyGame)
+
+        self.main_vlayout.setContentsMargins(0, 10, 0, 10)
+
+        self.animation = QPropertyAnimation(self, b"windowOpacity")
+
+
+
+
+    def startThyGame(self):
+        self.effect = QGraphicsOpacityEffect(self)
+        self.setGraphicsEffect(self.effect)
+
+        # Анимация для эффекта
+        self.animation = QPropertyAnimation(self.effect, b"opacity")
+        self.animation.setDuration(300)
+        self.animation.setStartValue(1.0)
+        self.animation.setEndValue(0.0)
+        self.animation.setEasingCurve(QEasingCurve.OutQuad)
+
+        self.animation.finished.connect(lambda: self.hide())
+        self.animation.start()
+
+    def changeVisibility(self):
+        if self.psw_val.text() == ("♢" * len(self.psw_)):
+            self.psw_val.setText(self.psw_)
+        else:
+            self.psw_val.setText("♢" * len(self.psw_))
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        gradient = QLinearGradient(QPoint(0, 0), QPoint(self.width(), self.height()))
+        gradient.setColorAt(0, QColor(23, 20, 37))
+        gradient.setColorAt(1, QColor(50, 40, 70))
+        painter.fillRect(self.rect(), gradient)
+
+
 class MainHorizontalLabel(HorizontalLabel):
     pass
 
@@ -367,6 +491,8 @@ class TableElement(QWidget):
         self.main_elem_wrapper.setContentsMargins(0, 0, 3, 0)
 
 
+
+
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
@@ -377,7 +503,7 @@ class MainWindow(QWidget):
 
         supermainL = QVBoxLayout(self)
 
-        main_element = TableElement(self)
+        self.main_element = TableElement(self)
 
         font_add_widget = QFont("Comfortaa", 15, QFont.Bold)
         self.add_widget = QPushButton(self)
@@ -387,8 +513,8 @@ class MainWindow(QWidget):
         self.add_widget.setText("+")
         self.add_widget.setFont(font_add_widget)
         self.add_widget.clicked.connect(self.add_tables_btn)
-        main_element.add_btn(self.add_widget)
-        supermainL.addWidget(main_element, alignment=Qt.AlignTop)
+        self.main_element.add_btn(self.add_widget)
+        supermainL.addWidget(self.main_element, alignment=Qt.AlignTop)
 
         self.scroll_area = QScrollArea(self)
         self.scroll_area.setWidgetResizable(True)
@@ -417,9 +543,17 @@ class MainWindow(QWidget):
         self.vertical_list_tables = QVBoxLayout(self.vertical_list_tablesWrapper)
         self.scroll_area.setWidget(self.vertical_list_tablesWrapper)
         self.tables_list = []
-
         self.scroll_area.hide()
+        self.add_widget.hide()
+        self.main_element.hide()
 
+        self.welcomeFriend = GreetingsPal(self)
+        self.welcomeFriend.enter_btn.clicked.connect(self.mainElShow)
+        supermainL.addWidget(self.welcomeFriend)
+        supermainL.setContentsMargins(0, 0, 0, 0)
+
+    def mainElShow(self):
+        QTimer.singleShot(300, lambda : (self.main_element.show(), self.add_widget.show()))
 
     def add_tables_btn(self):
         if self.size().height() <= 400:
