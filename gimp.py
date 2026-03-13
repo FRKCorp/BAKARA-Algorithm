@@ -315,7 +315,7 @@ class GreetingsPal(QWidget):
         self.main_vlayout.addWidget(self.enter_btn)
         self.enter_btn.clicked.connect(self.startThyGame)
 
-        self.main_vlayout.setContentsMargins(0, 10, 0, 10)
+        self.main_vlayout.setContentsMargins(10, 20, 10, 22)
 
         self.animation = QPropertyAnimation(self, b"windowOpacity")
 
@@ -325,14 +325,11 @@ class GreetingsPal(QWidget):
     def startThyGame(self):
         self.effect = QGraphicsOpacityEffect(self)
         self.setGraphicsEffect(self.effect)
-
-        # Анимация для эффекта
         self.animation = QPropertyAnimation(self.effect, b"opacity")
         self.animation.setDuration(300)
         self.animation.setStartValue(1.0)
         self.animation.setEndValue(0.0)
         self.animation.setEasingCurve(QEasingCurve.OutQuad)
-
         self.animation.finished.connect(lambda: self.hide())
         self.animation.start()
 
@@ -489,7 +486,6 @@ class TableElement(QWidget):
     def turn_off_borders(self):
         self.main_elem_wrapper.setStyleSheet("border-bottom: 3px solid #443B6E;")
         self.main_elem_wrapper.setContentsMargins(0, 0, 3, 0)
-
 
 
 
