@@ -241,9 +241,10 @@ class GreetingsPal(QWidget):
         self.welcome_txt.setObjectName("welcome_txt")
         self.welcome_txt.setStyleSheet("""
             QPushButton {
-                background-color: transparent;
+                background-color: rgba(159, 148, 215, 0.2);
                 color: white;
                 border: none;
+                border-radius: 7px;
             }
         """)
         font = QFont("Comfortaa", 17, QFont.Bold)
@@ -254,7 +255,7 @@ class GreetingsPal(QWidget):
         self.login_txt = QPushButton(self)
         self.login_txt.setObjectName("login_txt")
         self.login_txt.setStyleSheet(
-            "background-color: transparent; color: #8175BB; border: none;")
+            "background-color: transparent; color: rgb(159, 148, 215); border: none; border-radius: 5px;")
         font_login_psw = QFont("Comfortaa", 15, QFont.Bold)
         self.login_txt.setFont(font_login_psw)
         self.login_txt.setText("Логин:")
@@ -274,7 +275,7 @@ class GreetingsPal(QWidget):
         self.psw_txt = QPushButton(self)
         self.psw_txt.setObjectName("psw_txt")
         self.psw_txt.setStyleSheet(
-            "background-color: transparent; color: #8175BB; border: none;")
+            "background-color: transparent; color: rgb(159, 148, 215); border: none; border-radius: 5px;")
         font_login_psw = QFont("Comfortaa", 15, QFont.Bold)
         self.psw_txt.setFont(font_login_psw)
         self.psw_txt.setText("Пароль:")
@@ -486,7 +487,6 @@ class TableElement(QWidget):
     def turn_off_borders(self):
         self.main_elem_wrapper.setStyleSheet("border-bottom: 3px solid #443B6E;")
         self.main_elem_wrapper.setContentsMargins(0, 0, 3, 0)
-
 
 
 class MainWindow(QWidget):
