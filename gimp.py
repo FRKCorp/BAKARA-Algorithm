@@ -1,3 +1,4 @@
+import random
 import sys
 import math
 from PyQt5.QtWidgets import (
@@ -5,7 +6,8 @@ from PyQt5.QtWidgets import (
     QScrollArea, QGraphicsOpacityEffect, QHBoxLayout, QSizePolicy, QLabel, QFrame, QComboBox, QMessageBox,
 )
 from PyQt5.QtGui import QPainter, QColor, QBrush, QFont, QIcon, QLinearGradient
-from PyQt5.QtCore import Qt, QRectF, QPointF, QEasingCurve, QPropertyAnimation, QSize, QRect, QTimer, qWarning, QPoint
+from PyQt5.QtCore import Qt, QRectF, QPointF, QEasingCurve, QPropertyAnimation, QSize, QRect, QTimer, qWarning, QPoint, \
+    QParallelAnimationGroup
 
 import sys
 import math
@@ -252,74 +254,89 @@ class GreetingsPal(QWidget):
         self.welcome_txt.setText("♧ Добро пожаловать в Baccarat ♧")
         self.main_vlayout.addWidget(self.welcome_txt, alignment=Qt.AlignTop)
 
-        self.login_txt = QPushButton(self)
-        self.login_txt.setObjectName("login_txt")
-        self.login_txt.setStyleSheet(
-            "background-color: transparent; color: rgb(159, 148, 215); border: none; border-radius: 5px;")
-        font_login_psw = QFont("Comfortaa", 15, QFont.Bold)
-        self.login_txt.setFont(font_login_psw)
-        self.login_txt.setText("Логин:")
+        self.welcome_txt2 = QPushButton(self)
+        self.welcome_txt2.setObjectName("welcome_txt")
+        self.welcome_txt2.setStyleSheet("""
+                    QPushButton {
+                        background-color: transparent;
+                        color: white;
+                        border: none;
+                    }
+                """)
+        font = QFont("Comfortaa", 15, QFont.Bold)
+        self.welcome_txt2.setFont(font)
+        self.welcome_txt2.setText("Перейдите на сайт для авторизации,\n чтобы прожолжить")
+        self.main_vlayout.addWidget(self.welcome_txt2, alignment=Qt.AlignCenter)
 
-        self.login_val = QPushButton(self)
-        self.login_val.setObjectName("login_val")
-        self.login_val.setStyleSheet("background-color: transparent; color: white; border: none;")
-        font_val = QFont("Comfortaa", 13, QFont.Bold)
-        self.login_val.setFont(font_val)
-        self.login_val.setText("⇾  " + "Саня Маляр" + "  ⇽")
+        self.cards_array = ["🃒", "🃑", "🃓", "🃔", "🃕", "🃖", "🃘", "🃙", "🃚", "🃛", "🃜", "🃝", "🃞", "🂡", "🂢",
+                            "🂣", "🂤", "🂥", "🂦", "🂧", "🂨", "🂩", "🂪", "🂫", "🂬", "🂭", "🂮", "🂱", "🂲", "🂳", "🂴", "🂵", "🂶", "🂷", "🂸",
+                            "🂹", "🂺", "🂻", "🂼", "🂽", "🂾", "🃁", "🃂", "🃃", "🃄", "🃅", "🃆", "🃇", "🃈", "🃉", "🃊", "🃋", "🃌", "🃍", "🃎",]
 
-        login_layout = QHBoxLayout(self)
-        login_layout.addWidget(self.login_txt, alignment=Qt.AlignLeft)
-        login_layout.addWidget(self.login_val, alignment=Qt.AlignLeft)
-        login_layout.setContentsMargins(0, 0, 0, 0)
-
-        self.psw_txt = QPushButton(self)
-        self.psw_txt.setObjectName("psw_txt")
-        self.psw_txt.setStyleSheet(
-            "background-color: transparent; color: rgb(159, 148, 215); border: none; border-radius: 5px;")
-        font_login_psw = QFont("Comfortaa", 15, QFont.Bold)
-        self.psw_txt.setFont(font_login_psw)
-        self.psw_txt.setText("Пароль:")
-
-        self.psw_val = QPushButton(self)
-        self.psw_val.setObjectName("psw_val")
-        self.psw_val.setStyleSheet(
-            "background-color: transparent; color: white; border: none;")
-        font_val = QFont("Comfortaa", 13, QFont.Bold)
-        self.psw_val.setFont(font_val)
-        self.psw_val.setText(f"{"♢" * len(self.psw_)}")
-        self.psw_val.clicked.connect(self.changeVisibility)
-
-        login_layout = QHBoxLayout(self)
-        login_layout.addWidget(self.login_txt, alignment=Qt.AlignLeft)
-        login_layout.addWidget(self.login_val)
-        login_layout.setContentsMargins(50, 0, 20, 0)
-        login_layoutWrapper = QWidget()
-        login_layoutWrapper.setLayout(login_layout)
-
-        psw_layout = QHBoxLayout(self)
-        psw_layout.addWidget(self.psw_txt, alignment=Qt.AlignLeft)
-        psw_layout.addWidget(self.psw_val)
-        psw_layout.setContentsMargins(50, 0, 20, 0)
-        psw_layoutWrapper = QWidget()
-        psw_layoutWrapper.setLayout(psw_layout)
-        login_layoutWrapper.setStyleSheet("background-color: transparent;")
-        psw_layoutWrapper.setStyleSheet("background-color: transparent;")
-        self.main_vlayout.addWidget(login_layoutWrapper)
-        self.main_vlayout.addWidget(psw_layoutWrapper)
-
+        font_val = QFont("Comfortaa", 15, QFont.Bold)
         self.enter_btn = QPushButton(self)
         self.enter_btn.setObjectName('enter_btn')
         self.enter_btn.setStyleSheet(
-            "background-color: transparent; color: white; border: none; text-decoration: underline")
-        self.enter_btn.setText("Продолжить")
+            "background-color: transparent; color: white; border: none;")
+        self.enter_btn.setText("⭢ Продолжить ⭠")
         self.enter_btn.setFont(font_val)
         self.main_vlayout.addWidget(self.enter_btn)
         self.enter_btn.clicked.connect(self.startThyGame)
+        self.enter_btn.hide()
 
-        self.main_vlayout.setContentsMargins(10, 20, 10, 22)
+        font_val = QFont("Comfortaa", 15, QFont.Bold)
+        self.open_browse = QPushButton(self)
+        self.open_browse.setObjectName('open_browse')
+        self.open_browse.setStyleSheet(
+            "background-color: transparent; color: white; border: none;")
+        self.open_browse.setText("⭢ Перейти ⭠")
+        self.open_browse.setFont(font_val)
+        self.main_vlayout.addWidget(self.open_browse)
+        self.open_browse.clicked.connect(self.auth_bfr_enter)
 
+        self.main_vlayout.setContentsMargins(10, 20, 10, 20)
         self.animation = QPropertyAnimation(self, b"windowOpacity")
+        self.tmp_btn = QPushButton(self)
+        self.tmp_btn.setStyleSheet("border: none; color: white; background-color: transparent")
+        self.canimation = QPropertyAnimation(self.tmp_btn, b"geometry")
+        self.opacity_effect = QGraphicsOpacityEffect(self.tmp_btn)
+        self.tmp_btn.setGraphicsEffect(self.opacity_effect)
+        self.fade_animation = QPropertyAnimation(self.opacity_effect, b"opacity")
+        self.start_infinite_animation()
 
+    def auth_bfr_enter(self):
+        self.welcome_txt2.setText("Желаем удачи")
+        self.open_browse.hide()
+        self.enter_btn.show()
+
+    def start_infinite_animation(self):
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.cards_animation)
+        self.timer.start(1500)
+
+    def cards_animation(self):
+        x_tmp = random.randint(0, 470)
+        self.tmp_btn.setGeometry(x_tmp, -33, 32, 32)
+        font_tmp = QFont("Comfortaa", 30, QFont.Bold)
+        self.tmp_btn.setObjectName("tmp_btn")
+        self.tmp_btn.setFont(font_tmp)
+
+        self.tmp_btn.setText(self.cards_array[random.randint(0, 54)])
+        self.canimation.setDuration(1500)
+        start_pos = self.tmp_btn.geometry()
+        end_pos = QRect(x_tmp, 200, 32, 32)
+        self.canimation.setStartValue(start_pos)
+        self.canimation.setEndValue(end_pos)
+        self.canimation.setEasingCurve(QEasingCurve.InOutQuad)
+
+        self.fade_animation.setDuration(1500)
+        self.fade_animation.setStartValue(1.0)
+        self.fade_animation.setEndValue(0.0)
+
+        animation_group = QParallelAnimationGroup(self)
+        animation_group.addAnimation(self.canimation)
+        animation_group.addAnimation(self.fade_animation)
+        animation_group.setLoopCount(-1)
+        animation_group.start()
 
 
 
@@ -489,6 +506,70 @@ class TableElement(QWidget):
         self.main_elem_wrapper.setContentsMargins(0, 0, 3, 0)
 
 
+class Logs_(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(400, 400)
+        self.setMinimumSize(400, 400)
+        self.setMaximumSize(400, 400)
+        self.setStyleSheet("background-color: rgb(23, 20, 37);")
+        self.setWindowFlags(
+            Qt.WindowStaysOnTopHint |  # Окно поверх всех
+            Qt.FramelessWindowHint |  # Без рамки
+            Qt.WindowDoesNotAcceptFocus  # Не принимает фокус (не закрывается при клике вне)
+        )
+        screen = QApplication.primaryScreen().geometry()
+        x = screen.width() - self.width()
+        y = 100
+        self.move(x, y)
+        self.setWindowOpacity(0.9)
+        mainLayout = QVBoxLayout(self)
+        self.scroll_area2 = QScrollArea(self)
+        self.scroll_area2.setWidgetResizable(True)
+        self.scroll_area2.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll_area2.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.scroll_area2.setStyleSheet("""
+                            QScrollArea:vertical {
+                                border: 5px solid #443B6E; 
+                                border-radius: 7px;           
+                            }
+                            QScrollBar:vertical {
+                                background-color: red;
+                                min-height: 20px;
+                                border-radius: 5px;
+                            }
+                            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                                height: 0px;
+                                subcontrol-position: bottom;
+                                subcontrol-origin: margin;
+                            }
+                        """)
+        self.scroll_area2.setContentsMargins(0, 0, 0, 0)
+        self.txt_label = QLabel(self)
+        font_ = QFont("Comfortaa", 14, QFont.Bold)
+        self.txt_label.setStyleSheet("color: white; border: none; background-color: transparent;")
+        self.txt_label.setFont(font_)
+        self.txt_label.setWordWrap(True)
+        self.text_ = "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Donec quam felis, ultricies nec, pellentesque eu, pretium quis, sem. Nulla consequat massa quis enim. Donec pede justo, fringilla vel, aliquet nec, vulputate eget, arcu. In enim justo, rhoncus ut, imperdiet a, venenatis vitae, justo. Nullam dictum felis eu pede mollis pretium. Integer tincidunt. Cras dapibus. Vivamus elementum semper nisi. Aenean vulputate eleifend tellus. Aenean leo ligula, porttitor eu, consequat vitae, eleifend ac, enim. Aliquam lorem ante, dapibus in, viverra quis, feugiat a, tellus. Phasellus viverra nulla ut metus varius laoreet. Quisque rutrum. Aenean imperdiet. Etiam ultricies nisi vel augue. Curabitur ullamcorper ultricies nisi. Nam eget dui. Etiam rhoncus. Maecenas tempus, tellus eget condimentum rhoncus, sem quam semper libero, sit amet adipiscing sem neque sed ipsum. Nam quam nunc, blandit vel, luctus pulvinar, hendrerit id, lorem. Maecenas nec odio et ante tincidunt tempus. Donec vitae sapien ut libero venenatis faucibus. Nullam quis ante. Etiam sit amet orci eget eros faucibus tincidunt. Duis leo. Sed fringilla mauris sit amet nibh. Donec sodales sagittis magna. Sed consequat, leo eget bibendum sodales, augue velit cursus nunc,"
+
+        self.add_txt_to_widget()
+
+        mainLayout.addWidget(self.scroll_area2)
+        mainLayout.setContentsMargins(0, 0, 0, 0)
+
+    def add_txt_to_widget(self):
+        self.text_ = "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Donec quam felis, ultricies nec, pellentesque eu, pretium quis, sem. Nulla consequat massa quis enim. Donec pede justo, fringilla vel, aliquet nec, vulputate eget, arcu. In enim justo, rhoncus ut, imperdiet a, venenatis vitae, justo. Nullam dictum felis eu pede mollis pretium. Integer tincidunt. Cras dapibus. Vivamus elementum semper nisi. Aenean vulputate eleifend tellus. Aenean leo ligula, porttitor eu, consequat vitae, eleifend ac, enim. Aliquam lorem ante, dapibus in, viverra quis, feugiat a, tellus. Phasellus viverra nulla ut metus varius laoreet. Quisque rutrum. Aenean imperdiet. Etiam ultricies nisi vel augue. Curabitur ullamcorper ultricies nisi. Nam eget dui. Etiam rhoncus. Maecenas tempus, tellus eget condimentum rhoncus, sem quam semper libero, sit amet adipiscing sem neque sed ipsum. Nam quam nunc, blandit vel, luctus pulvinar, hendrerit id, lorem. Maecenas nec odio et ante tincidunt tempus. Donec vitae sapien ut libero venenatis faucibus. Nullam quis ante. Etiam sit amet orci eget eros faucibus tincidunt. Duis leo. Sed fringilla mauris sit amet nibh. Donec sodales sagittis magna. Sed consequat, leo eget bibendum sodales, augue velit cursus nunc,"
+        self.txt_label.setText(self.text_)
+        self.scroll_area2.setWidget(self.txt_label)
+
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        gradient = QLinearGradient(QPoint(0, 0), QPoint(self.width(), self.height()))
+        gradient.setColorAt(0, QColor(23, 20, 37))
+        gradient.setColorAt(1, QColor(50, 40, 70))
+        painter.fillRect(self.rect(), gradient)
+
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
@@ -500,6 +581,38 @@ class MainWindow(QWidget):
         supermainL = QVBoxLayout(self)
 
         self.main_element = TableElement(self)
+
+        self.setWindowFlags(
+            Qt.WindowStaysOnTopHint |  # Окно поверх всех
+            Qt.FramelessWindowHint |  # Без рамки
+            Qt.WindowDoesNotAcceptFocus  # Не принимает фокус (не закрывается при клике вне)
+        )
+        self.move(100, 100)
+        self.setWindowOpacity(0.9)
+
+        font_algs = QFont("Comfortaa", 14, QFont.Bold)
+        algs_logs_layout = QHBoxLayout(self)
+        self.algs_module = QPushButton(self)
+        self.algs_module.setObjectName("algs_module")
+        self.algs_module.setStyleSheet("border-radius: 7px; color: white")
+        self.algs_module.setText("Модуль управления алгоритмов")
+        self.algs_module.setFont(font_algs)
+
+
+        self.logs_ = QPushButton(self)
+        self.logs_.setObjectName("logs_")
+        self.logs_.setStyleSheet("border-radius: 7px; color: white")
+        self.logs_.setFixedSize(80, 20)
+        self.logs_.setText("Логи 📋")
+        self.logs_.setFont(font_algs)
+        self.logs_.clicked.connect(self.show_logs)
+
+        algs_logs_layout.addWidget(self.algs_module, alignment=Qt.AlignLeft)
+        algs_logs_layout.addWidget(self.logs_, alignment=Qt.AlignRight)
+        algs_logs_layout.setContentsMargins(5, 0, 5, 0)
+        algs_logs_layoutWrapper = QWidget()
+        algs_logs_layoutWrapper.setLayout(algs_logs_layout)
+        self.main_element.add_btn(algs_logs_layoutWrapper)
 
         font_add_widget = QFont("Comfortaa", 15, QFont.Bold)
         self.add_widget = QPushButton(self)
@@ -547,6 +660,11 @@ class MainWindow(QWidget):
         self.welcomeFriend.enter_btn.clicked.connect(self.mainElShow)
         supermainL.addWidget(self.welcomeFriend)
         supermainL.setContentsMargins(0, 0, 0, 0)
+
+
+    def show_logs(self):
+        self.log_window = Logs_()
+        self.log_window.show()
 
     def mainElShow(self):
         QTimer.singleShot(300, lambda : (self.main_element.show(), self.add_widget.show()))
