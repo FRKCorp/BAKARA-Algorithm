@@ -514,9 +514,9 @@ class Logs_(QWidget):
         self.setMaximumSize(400, 400)
         self.setStyleSheet("background-color: rgb(23, 20, 37);")
         self.setWindowFlags(
-            Qt.WindowStaysOnTopHint |  # Окно поверх всех
-            Qt.FramelessWindowHint |  # Без рамки
-            Qt.WindowDoesNotAcceptFocus  # Не принимает фокус (не закрывается при клике вне)
+            Qt.WindowStaysOnTopHint |
+            Qt.FramelessWindowHint |
+            Qt.WindowDoesNotAcceptFocus
         )
         screen = QApplication.primaryScreen().geometry()
         x = screen.width() - self.width()
@@ -583,9 +583,9 @@ class MainWindow(QWidget):
         self.main_element = TableElement(self)
 
         self.setWindowFlags(
-            Qt.WindowStaysOnTopHint |  # Окно поверх всех
-            Qt.FramelessWindowHint |  # Без рамки
-            Qt.WindowDoesNotAcceptFocus  # Не принимает фокус (не закрывается при клике вне)
+            Qt.WindowStaysOnTopHint |
+            Qt.FramelessWindowHint |
+            Qt.WindowDoesNotAcceptFocus
         )
         self.move(100, 100)
         self.setWindowOpacity(0.9)
