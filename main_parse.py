@@ -1,16 +1,36 @@
 from playwright.sync_api import sync_playwright
 import json
 
+import mainUI
+from PyQt5.QtWidgets import QApplication
+import sys
+
 import algorithm_realize, AlgorithmClass
 
+from PyQt5.QtCore import QThread, pyqtSignal
+import os
+
+import logging
+logger = logging.getLogger(__name__)
+
 TABLE_URL = "https://fortunazone.com/ru/play/998/baccarat--tc654mda5h6kit2c"
-AUTH_FILE = "../BAKARA-Algorithm/authentications/auth.json"
+AUTH_DIR = "authentications"
+AUTH_FILE = os.path.join("authentications", "auth.json")
 
 results = []
 
 # Переменная для объекта класса, для отслеживания статистики работы алгоритма
 algorithm_instance = None
 
+class BotThread(QThread):
+
+    new_result = pyqtSignal(dict)
+
+    def __init__(self):
+        super().__init__()
+
+    def run(self):
+        run_bot(self)
 
 def convert(winner: str) -> str | None:
     """
@@ -28,12 +48,12 @@ def print_results():
     """
     Выводит текущую последовательность результатов в одну строку
     """
-    print(" ".join(results))
+    logger.info(" ".join(results))
 
 def get_results():
     return results
 
-def handle_message(frame: str):
+def handle_message(frame, thread):
     """
     Обрабатывает входящее сообщение WebSocket.
     Парсит JSON и извлекает результаты игры.
@@ -61,7 +81,9 @@ def handle_message(frame: str):
             algorithm_instance = AlgorithmClass.Algorythm()
 
         # Вызываем срабатывание алгоритма для новых значений
-        algorithm_realize.main_realize(results, algorithm_instance)
+        algorithm_data = algorithm_realize.main_realize(results, algorithm_instance)
+
+        thread.new_result.emit(algorithm_data)
 
     # Новый результат раунда
     if msg_type in ["baccarat.gameResult", "baccarat.roundResult"]:
@@ -74,7 +96,7 @@ def handle_message(frame: str):
 
 
 
-def handle_ws(ws):
+def handle_ws(ws, thread):
     """
     Срабатывает при открытии любого WebSocket.
     Фильтруем только игровой Baccarat сокет.
@@ -82,12 +104,12 @@ def handle_ws(ws):
     if "public/baccarat/player/game" not in ws.url:
         return
 
-    print("🎯 GAME SOCKET CONNECTED")
+    logger.info("🎯 GAME SOCKET CONNECTED")
 
-    ws.on("framereceived", handle_message)
+    ws.on("framereceived", lambda frame: handle_message(frame, thread))
 
 
-def run_bot():
+def run_bot(thread):
     """
     Основной режим работы.
     Загружает сохранённую сессию и подключается к столу.
@@ -98,12 +120,12 @@ def run_bot():
         context = browser.new_context(storage_state=AUTH_FILE)
         page = context.new_page()
 
-        page.on("websocket", handle_ws)
+        page.on("websocket", lambda ws: handle_ws(ws, thread))
 
-        print("🎰 Открываю стол...")
+        logger.info("🎰 Открывается стол...")
         page.goto(TABLE_URL)
 
-        print("📡 Ожидание данных...")
+        logger.info("📡 Ожидание данных...")
         page.wait_for_timeout(600000)  # 10 минут
 
 

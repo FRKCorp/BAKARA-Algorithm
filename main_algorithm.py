@@ -1,6 +1,9 @@
 import numpy as np
 import pprint
 
+import logging
+logger = logging.getLogger(__name__)
+
 response_file = 'example-input/response-example.txt'
 
 # def read_current_matrix():

@@ -1,0 +1,44 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+venv/
+env/
+ENV/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Your excluded folders
+example-input/
+test_files/
+test-files/   # на случай разного написания
+
+# Logs
+*.log
+bakara.log
+
+# Spec file
+BaccaratAlgorithm.spec
+
+# IDE (PyCharm, VSCode и т.д.)
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python cache
+.pytest_cache/
+.mypy_cache/
+
+# Static / temporary
+*.tmp
+*.swp

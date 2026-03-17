@@ -40,7 +40,6 @@ class Algorythm:
     def check_first_turn(self, pred):
         """Функция для проверки на первый ход алгоритма, или ход после ничьи"""
         if self.previousPredict == '':
-            self.gamesCounter += 1
             self.previousPredict = pred
             return True
         else:
@@ -48,6 +47,11 @@ class Algorythm:
 
     def print_stat(self):
         """Функция для получения текущей статистики алгоритма"""
-        temp_s = f'|  Количество игр: {self.gamesCounter-1}  |  Победы: {self.win_lose['Wins']}  |  Пройгрыши: {self.win_lose['Lose']}  |'
-        formated_s = '='*len(temp_s)+'\n'+temp_s+'\n'+'='*len(temp_s)
-        print(formated_s)
+
+        import logging
+        logger = logging.getLogger(__name__)
+
+        temp_s = f'|  Количество игр: {self.gamesCounter}  |  Победы: {self.win_lose['Wins']}  |  Пройгрыши: {self.win_lose['Lose']}  |'
+        logger.info('='*len(temp_s))
+        logger.info(temp_s)
+        logger.info('='*len(temp_s))
