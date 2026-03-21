@@ -1,24 +1,18 @@
 from playwright.sync_api import sync_playwright
 import json
 import os
-import time
 
 TABLE_URL = "https://riobet.com/ru/play/game/8575"
 HOME_URL = "https://riobet.com"
 AUTH_FILE = "auth.json"
 
-results = []
-game_connected = False
+results_by_table = {}
+attached_sockets = set()  # чтобы не дублировать WS
 
 
-def convert(winner: str) -> str | None:
-    """
-    Преобразует текст победителя (Banker/Player/Tie)
-    в короткий формат (B/P/T)
-    """
+def convert(winner: str):
     if not isinstance(winner, str):
         return None
-
     return {
         "banker": "B",
         "player": "P",
@@ -26,20 +20,8 @@ def convert(winner: str) -> str | None:
     }.get(winner.lower())
 
 
-def print_results():
-    """
-    Выводит текущую последовательность результатов в одну строку
-    """
-    print(" ".join(results))
-
-
-def handle_message(frame):
-    global results
-
-    if not isinstance(frame, str):
-        return
-
-    if not frame.startswith("{"):
+def handle_message(frame, table_id):
+    if not isinstance(frame, str) or not frame.startswith("{"):
         return
 
     try:
@@ -47,7 +29,7 @@ def handle_message(frame):
     except:
         return
 
-    # 👇 ЛОВИМ ТОЛЬКО РЕЗУЛЬТАТ ИГРЫ
+    # --- PRAGMATIC ---
     if "gameresult" in data:
         result = data["gameresult"].get("result")
 
@@ -55,118 +37,107 @@ def handle_message(frame):
             letter = convert(result)
 
             if letter:
-                results.append(letter)
-                print_results()
+                results_by_table.setdefault(table_id, []).append(letter)
+                print(f"[PP {table_id}]: {' '.join(results_by_table[table_id])}")
+
+    # --- EVOLUTION ---
+    if "gameResult" in data:
+        result = data["gameResult"].get("winner")
+
+        if result:
+            letter = convert(result)
+
+            if letter:
+                results_by_table.setdefault(table_id, []).append(letter)
+                print(f"[EVO {table_id}]: {' '.join(results_by_table[table_id])}")
 
 
-def handle_ws(ws):
-    global game_connected
+def extract_table_id(url: str):
+    # --- PRAGMATIC ---
+    if "tableId=" in url:
+        return url.split("tableId=")[-1].split("&")[0]
 
-    if "pragmaticplaylive" not in ws.url:
+    # --- EVOLUTION ---
+    if "evo-games" in url:
+        try:
+            return url.split("/game/")[1].split("/")[0]
+        except:
+            return "evo_unknown"
+
+    return None
+
+
+def attach_ws(ws):
+    """Подключаемся к WS если он новый"""
+    if ws.url in attached_sockets:
         return
 
-    print("🎯 GAME SOCKET:", ws.url)
+    attached_sockets.add(ws.url)
 
-    game_connected = True
+    if not any(x in ws.url for x in ["pragmaticplaylive", "evo-games"]):
+        return
 
-    ws.on("framereceived", handle_message)
+    table_id = extract_table_id(ws.url)
+
+    if not table_id:
+        print("⚠️ WS без tableId:", ws.url)
+        return
+
+    print("🆕 NEW WS:", ws.url, "→", table_id)
+
+    print("🆕 NEW WS:", ws.url, "→", table_id)
+
+    results_by_table.setdefault(table_id, [])
+
+    ws.on("framereceived", lambda frame: handle_message(frame, table_id))
+
+
+def monitor_page(page):
+    """Подписываемся на WS на странице"""
+    print("📄 Новая страница")
+
+    # 🔥 ВАЖНО: перехват ВСЕХ будущих WS
+    page.on("websocket", attach_ws)
 
 
 def save_login_session():
-    """
-    Первый запуск.
-    Открывает браузер, ждёт ручной логин
-    и сохраняет cookies + localStorage в auth.json
-    """
     with sync_playwright() as p:
-
-        browser = p.chromium.launch(
-            headless=False,
-            args=[
-                "--start-maximized",
-                "--disable-blink-features=AutomationControlled"
-            ]
-        )
-
+        browser = p.chromium.launch(headless=False)
         context = browser.new_context()
         page = context.new_page()
 
         page.goto(HOME_URL)
 
-        print("🔐 Войди вручную в аккаунт...")
-        input("Нажми Enter после входа...")
+        print("🔐 Войди вручную")
+        input("Enter после логина")
 
         context.storage_state(path=AUTH_FILE)
-
-        print("✅ auth.json сохранён")
+        print("✅ Сессия сохранена")
 
         browser.close()
 
 
-def ensure_game_loaded(page, context):
-    """
-    Проверяет загрузку игры через WebSocket.
-    Если нет — требует логин.
-    """
-    global game_connected
-
-    start = time.time()
-
-    while time.time() - start < 10:
-
-        if game_connected:
-            return True
-
-        time.sleep(0.5)
-
-    print("⚠️ Игра не загрузилась — требуется вход")
-
-    page.goto(HOME_URL)
-
-    input("🔐 Войди вручную и нажми Enter...")
-
-    context.storage_state(path=AUTH_FILE)
-
-    print("✅ Новая сессия сохранена")
-
-    page.goto(TABLE_URL)
-
-    return True
-
-
 def run_bot():
-    """
-    Основной режим работы.
-    Загружает сохранённую сессию и подключается к столу.
-    """
     with sync_playwright() as p:
+        browser = p.chromium.launch(headless=False)
 
-        browser = p.chromium.launch(
-            headless=False,
-            args=[
-                "--start-maximized",
-                "--disable-blink-features=AutomationControlled"
-            ]
-        )
+        context = browser.new_context(storage_state=AUTH_FILE)
 
-        context = browser.new_context(
-            storage_state=AUTH_FILE
-        )
+        # 🔥 ЛОВИМ ВСЕ НОВЫЕ СТРАНИЦЫ
+        context.on("page", monitor_page)
 
         page = context.new_page()
+        monitor_page(page)
 
-        # слушаем WebSocket
-        page.on("websocket", handle_ws)
-
-        print("🎰 Открываю стол...")
-
+        print("🎰 Открываю игру...")
         page.goto(TABLE_URL)
 
-        # проверка загрузки
-        ensure_game_loaded(page, context)
+        print("📡 Жду WS и новые столы...")
 
-        print("📡 Ожидание данных...")
-        page.wait_for_timeout(600000)
+        # 🔥 БЕСКОНЕЧНЫЙ РАНТАЙМ
+        while True:
+            # просто держим процесс живым
+            page.wait_for_timeout(1000)
 
 
 if __name__ == "__main__":
