@@ -2,12 +2,11 @@ from playwright.sync_api import sync_playwright
 import json
 import os
 
-TABLE_URL = "https://riobet.com/ru/play/game/8575"
+TABLE_URL = "https://riobet.com/ru/play/game/29328"
 HOME_URL = "https://riobet.com"
 AUTH_FILE = "auth.json"
 
-results_by_table = {}
-attached_sockets = set()  # чтобы не дублировать WS
+attached_sockets = set()
 
 
 def convert(winner: str):
@@ -19,8 +18,10 @@ def convert(winner: str):
         "tie": "T"
     }.get(winner.lower())
 
-
-def handle_message(frame, table_id):
+# для каждого стола создаём set уже виденных gameId
+seen_games = {}
+results_by_table = {}
+def handle_message(frame, table_id, source):
     if not isinstance(frame, str) or not frame.startswith("{"):
         return
 
@@ -29,28 +30,50 @@ def handle_message(frame, table_id):
     except:
         return
 
-    # --- PRAGMATIC ---
-    if "gameresult" in data:
-        result = data["gameresult"].get("result")
+    # инициируем
+    results_by_table.setdefault(table_id, [])
+    seen_games.setdefault(table_id, set())
 
-        if result:
-            letter = convert(result)
+    if source == "pp":
+        if "gameresult" in data:
+            result = data["gameresult"].get("result")
+            if result:
+                letter = convert(result)
+                if letter:
+                    results_by_table[table_id].append(letter)
+                    print(f"[PP {table_id}]: {' '.join(results_by_table[table_id])}")
 
-            if letter:
-                results_by_table.setdefault(table_id, []).append(letter)
-                print(f"[PP {table_id}]: {' '.join(results_by_table[table_id])}")
+    if source == "evo":
+        # 1️⃣ Смотрим историю при подключении
+        if data.get("type") == "baccarat.encodedShoeState":
+            history = data.get("args", {}).get("history_v2", [])
+            for game in history:
+                winner = game.get("winner")
+                game_id = game.get("gameId")  # иногда может не быть
+                if winner:
+                    if game_id and game_id in seen_games[table_id]:
+                        continue
+                    if game_id:
+                        seen_games[table_id].add(game_id)
+                    letter = convert(winner)
+                    if letter:
+                        results_by_table[table_id].append(letter)
+            print(f"[EVO {table_id} HISTORY]: {' '.join(results_by_table[table_id])}")
 
-    # --- EVOLUTION ---
-    if "gameResult" in data:
-        result = data["gameResult"].get("winner")
-
-        if result:
-            letter = convert(result)
-
-            if letter:
-                results_by_table.setdefault(table_id, []).append(letter)
-                print(f"[EVO {table_id}]: {' '.join(results_by_table[table_id])}")
-
+        # 2️⃣ Ловим новые результаты
+        if data.get("type") in ("baccarat.resolved", "baccarat.gameWinners"):
+            args = data.get("args", {})
+            winner = args.get("result", {}).get("winner")
+            game_id = args.get("gameId")
+            if winner:
+                if game_id and game_id in seen_games[table_id]:
+                    return
+                if game_id:
+                    seen_games[table_id].add(game_id)
+                letter = convert(winner)
+                if letter:
+                    results_by_table[table_id].append(letter)
+                    print(f"[EVO {table_id}]: {' '.join(results_by_table[table_id])}")
 
 def extract_table_id(url: str):
     # --- PRAGMATIC ---
@@ -67,14 +90,22 @@ def extract_table_id(url: str):
     return None
 
 
+def detect_source(url: str):
+    if "pragmaticplaylive" in url:
+        return "pp"
+    if "evo-games" in url:
+        return "evo"
+    return None
+
+
 def attach_ws(ws):
-    """Подключаемся к WS если он новый"""
     if ws.url in attached_sockets:
         return
 
     attached_sockets.add(ws.url)
 
-    if not any(x in ws.url for x in ["pragmaticplaylive", "evo-games"]):
+    source = detect_source(ws.url)
+    if not source:
         return
 
     table_id = extract_table_id(ws.url)
@@ -83,20 +114,15 @@ def attach_ws(ws):
         print("⚠️ WS без tableId:", ws.url)
         return
 
-    print("🆕 NEW WS:", ws.url, "→", table_id)
-
-    print("🆕 NEW WS:", ws.url, "→", table_id)
+    print(f"🆕 NEW WS [{source.upper()}]:", ws.url, "→", table_id)
 
     results_by_table.setdefault(table_id, [])
 
-    ws.on("framereceived", lambda frame: handle_message(frame, table_id))
+    ws.on("framereceived", lambda frame: handle_message(frame, table_id, source))
 
 
 def monitor_page(page):
-    """Подписываемся на WS на странице"""
     print("📄 Новая страница")
-
-    # 🔥 ВАЖНО: перехват ВСЕХ будущих WS
     page.on("websocket", attach_ws)
 
 
@@ -123,7 +149,7 @@ def run_bot():
 
         context = browser.new_context(storage_state=AUTH_FILE)
 
-        # 🔥 ЛОВИМ ВСЕ НОВЫЕ СТРАНИЦЫ
+        # ловим новые вкладки
         context.on("page", monitor_page)
 
         page = context.new_page()
@@ -132,11 +158,9 @@ def run_bot():
         print("🎰 Открываю игру...")
         page.goto(TABLE_URL)
 
-        print("📡 Жду WS и новые столы...")
+        print("📡 Жду WS и данные со всех столов...")
 
-        # 🔥 БЕСКОНЕЧНЫЙ РАНТАЙМ
         while True:
-            # просто держим процесс живым
             page.wait_for_timeout(1000)
 
 
