@@ -21,6 +21,7 @@ def convert(winner: str):
 # для каждого стола создаём set уже виденных gameId
 seen_games = {}
 results_by_table = {}
+history_loaded = {}
 def handle_message(frame, table_id, source):
     if not isinstance(frame, str) or not frame.startswith("{"):
         return
@@ -30,9 +31,9 @@ def handle_message(frame, table_id, source):
     except:
         return
 
-    # инициируем
     results_by_table.setdefault(table_id, [])
     seen_games.setdefault(table_id, set())
+    history_loaded.setdefault(table_id, False)  # 👈 новый флаг
 
     if source == "pp":
         if "gameresult" in data:
@@ -44,36 +45,49 @@ def handle_message(frame, table_id, source):
                     print(f"[PP {table_id}]: {' '.join(results_by_table[table_id])}")
 
     if source == "evo":
-        # 1️⃣ Смотрим историю при подключении
-        if data.get("type") == "baccarat.encodedShoeState":
+
+        # 1️⃣ Загружаем историю ТОЛЬКО 1 раз
+        if (
+            data.get("type") == "baccarat.encodedShoeState"
+            and not history_loaded[table_id]
+        ):
             history = data.get("args", {}).get("history_v2", [])
+
             for game in history:
                 winner = game.get("winner")
-                game_id = game.get("gameId")  # иногда может не быть
+                game_id = game.get("gameId")
+
                 if winner:
-                    if game_id and game_id in seen_games[table_id]:
-                        continue
                     if game_id:
                         seen_games[table_id].add(game_id)
+
                     letter = convert(winner)
                     if letter:
                         results_by_table[table_id].append(letter)
+
+            history_loaded[table_id] = True  # 👈 блокируем повтор
+
             print(f"[EVO {table_id} HISTORY]: {' '.join(results_by_table[table_id])}")
 
-        # 2️⃣ Ловим новые результаты
-        if data.get("type") in ("baccarat.resolved", "baccarat.gameWinners"):
+        # 2️⃣ Новые результаты
+        if data.get("type") == "baccarat.resolved":
             args = data.get("args", {})
             winner = args.get("result", {}).get("winner")
             game_id = args.get("gameId")
+
             if winner:
                 if game_id and game_id in seen_games[table_id]:
                     return
+
                 if game_id:
                     seen_games[table_id].add(game_id)
+
                 letter = convert(winner)
                 if letter:
                     results_by_table[table_id].append(letter)
-                    print(f"[EVO {table_id}]: {' '.join(results_by_table[table_id])}")
+
+                    # 👇 обновляем ту же историю
+                    print(f"[EVO {table_id} HISTORY]: {' '.join(results_by_table[table_id])}")
 
 def extract_table_id(url: str):
     # --- PRAGMATIC ---
