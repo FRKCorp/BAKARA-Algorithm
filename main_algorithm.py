@@ -1,5 +1,4 @@
 import numpy as np
-import pprint
 
 import logging
 logger = logging.getLogger(__name__)
@@ -43,81 +42,81 @@ def get_current_position(matrix):
 
 def format_matrix(matrix, new_width, new_height):
     '''Функция для форматирования матрицы к новым значениям(чтобы отбросить не влияющие на алгоритм элементы)'''
-    new_matrix = []
+    res_string = []
+    res_element = ''
     w = new_width[0]
     h = new_height
 
-    if h >= 2:
-        for (i,element) in enumerate(matrix):
-            new_matrix.append(element[w:])
-            if i == h:
+    if h == 0:
+        get_correct_elements = False
+
+        for w_id in range(w, -1, -1):
+
+            if get_correct_elements:
                 break
+
+            for h_id in range(5, -1, -1):
+                t_list = matrix[h_id][w_id:w_id+2]
+
+                if 'T' not in t_list:
+                    get_correct_elements = True
+                    res_string = t_list
+                    res_element = matrix[h][w+1]
+                    break
     else:
-        if h == 1:
-            for (i, m) in enumerate(matrix):
-                if i == 0:
-                    new_matrix.append(m[w:])
-                else:
-                    new_matrix.append(m[w-1:])
-        if h == 0:
-            for m in matrix:
-                new_matrix.append(m[w:])
+        get_correct_elements = False
 
-    return new_matrix
+        for w_id in range(w, -1, -1):
 
-def check_pattern(matrix, pos):
+            if get_correct_elements:
+                break
+
+            if w_id == w:
+                cycle_start = h-1
+            else:
+                cycle_start = 5
+            for h_id in range(cycle_start, -1, -1):
+                t_list = matrix[h_id][w_id:w_id+2]
+
+                if 'T' not in t_list:
+                    get_correct_elements = True
+                    res_string = t_list
+                    res_element = matrix[h][w]
+                    break
+
+
+    return res_string, res_element
+
+def check_pattern(matrix, element, stat):
     '''Функция для определения патерна и составления рекомендации для ставки'''
 
     who_to_bid = None
-    current_list = matrix[pos]
-    prev_winner = current_list[len(current_list) - 1]
 
-    # Определение переменных для обычных случаев
-    if pos >= 2:
-        previous_list2 = matrix[pos-2]
-        previous_list1 = matrix[pos-1]
-    else:
-        # Определение переменных для первой строки
-        if pos == 1:
-            previous_list2 = matrix[len(matrix)-1]
-            previous_list1 = matrix[pos - 1]
-        # Определение переменных для нулевой строки
-        if pos == 0:
-            previous_list2 = matrix[len(matrix) - 2]
-            previous_list1 = matrix[len(matrix) - 1]
+    if element != 'T':
+        is_all_same = matrix.count(matrix[0]) == len(matrix)
 
-
-    if 'T' in previous_list1 or 'T' in previous_list2 or 'T' in current_list:
-        return (0, who_to_bid)
-
-    is_all_same2 = previous_list2.count(previous_list2[0]) == len(previous_list2)
-    is_all_same1 = previous_list1.count(previous_list1[0]) == len(previous_list1)
-
-    # Проверяем на красивый патерн
-    if is_all_same1 and is_all_same2:
-        # Делаем ставку на тот же цвет
-        who_to_bid = prev_winner
-        return (1, who_to_bid)
-    # Проверяем на не красивый патерн
-    elif not is_all_same1 and not is_all_same2:
-        # Делаем ставку на противоположный цвет
-        if prev_winner == 'P':
-            who_to_bid = 'B'
-        if prev_winner == 'B':
-            who_to_bid = 'P'
-        return (2, who_to_bid)
-    # Проверяем на качели
-    else:
-        # Если последним был Крассивый патерн, то ставим на некрасивый
-        if is_all_same1:
-            if prev_winner == 'P':
-                who_to_bid = 'B'
-            if prev_winner == 'B':
-                who_to_bid = 'P'
-        # Если последним был не Крассивый патерн, то ставим на крассивый
+        if stat.loseStreak >= 1:
+            if is_all_same:
+                if element == 'P':
+                    who_to_bid = 'B'
+                else:
+                    who_to_bid = 'P'
+                return 3, who_to_bid
+            else:
+                who_to_bid = element
+                return 3, who_to_bid
         else:
-            who_to_bid = prev_winner
-        return (3, who_to_bid)
+            if is_all_same:
+                who_to_bid = element
+                return 1, who_to_bid
+            else:
+                if element == 'P':
+                    who_to_bid = 'B'
+                else:
+                    who_to_bid = 'P'
+                return 2, who_to_bid
+    else:
+        return 0, who_to_bid
 
 def check_for_len(matrix):
     '''Функция для проверки длины матрицы'''
@@ -126,7 +125,7 @@ def check_for_len(matrix):
     for l in matrix:
         len_sum += len(l)
 
-    if len_sum < 8:
+    if len_sum < 8 or len_sum > 40:
         return False
     else:
         return True
@@ -151,7 +150,7 @@ def get_last_element(matrix):
                     break
         return matrix[last_id][len(matrix[last_id])-1]
 
-def main_process(matrix):
+def main_process(matrix, algorithm_stat):
     '''Основная функция для работы алгоритма'''
 
     # Считывание текущих фишек Биг-Роуд
@@ -163,10 +162,10 @@ def main_process(matrix):
         current_cursor, formated_matrix_len = get_current_position(current_matrix)
 
         # Форматирование матрицы и отбрасывания лишних значений
-        current_matrix = format_matrix(current_matrix, formated_matrix_len, current_cursor)
+        previous_string, current_element  = format_matrix(current_matrix, formated_matrix_len, current_cursor)
 
         # Определение текущего патерна и рекомендации для ставки
-        pattern_code, current_bid = check_pattern(current_matrix, current_cursor)
+        pattern_code, current_bid = check_pattern(previous_string, current_element, algorithm_stat)
 
         # Определение последнего выйгрыша, для расчёта победы или пройгрыша алгоритма
         last_win = get_last_element(current_matrix)

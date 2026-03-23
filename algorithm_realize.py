@@ -3,6 +3,7 @@ import random
 import time
 
 import main_algorithm
+from AlgorithmClass import Algorythm
 
 import logging
 logger = logging.getLogger(__name__)
@@ -85,11 +86,11 @@ def pattern_review(code, bid):
     if code == 0:
         logger.info(f'⚠️ Алгоритм встретил ничью и пропускает текущую серию.  |  Ставка на: {formated_bid}')
     elif code == 1:
-        logger.info(f'✅ Алгоритм определил две красивые серии подряд.  |  Ставка на: {formated_bid}')
+        logger.info(f'✅ Алгоритм определил красивую серию.  |  Ставка на: {formated_bid}')
     elif code == 2:
-        logger.info(f'✅ Алгоритм определил две НЕ красивые серии подряд.  |  Ставка на: {formated_bid}')
+        logger.info(f'✅ Алгоритм определил НЕ красивую серии.  |  Ставка на: {formated_bid}')
     elif code == 3:
-        logger.info(f'✅ Алгоритм определил Качели.  |  Ставка на: {formated_bid}')
+        logger.info(f'🔹 Алгоритм определил Качели.  |  Ставка на: {formated_bid}')
     else:
         logger.info('❌ Алгоритм не смог найти ни один патерн')
 
@@ -115,58 +116,44 @@ def format_bid(code, bid):
 
     return formated_pattern, formated_bid
 
-def main_realize(data_list: list, algorithm_stat):
+def debug_alg_stat(alg: Algorythm):
+    print(f'Previous Predict: {alg.previousPredict} | Last Win: {alg.lastWinElement} | Games: {alg.gamesCounter} | LoseStreak: {alg.loseStreak} | Win/Lose: {alg.win_lose}')
+
+
+def main_realize(data_list: dict, algorithm_stat: dict, changed_table: str):
     """Реализация алгоритма к текущему Биг-Роуд"""
 
+    all_tables_result = {}
+
+    table_id = changed_table
+
     # Форматирование текущего Биг-Роуд к матрице
-    matrix = read_current_matrix(data_list)
+    matrix = read_current_matrix(data_list[table_id])
 
     # Применение алгоритма к текущей матрице, и получение определённого патерна, ожидаемой ставки и последнего выйгрыша
-    pattern, bid, last_win = main_algorithm.main_process(matrix)
+    pattern, bid, last_win = main_algorithm.main_process(matrix, algorithm_stat[table_id])
     logger.info('*' * 45)
     logger.info(f'🔹 Изменение в Биг-Роуд:')
-    if pattern > 0:
-        if algorithm_stat.tieStreak:
-            algorithm_stat.tieStreak = False
+    if pattern >= 0:
         # Проверка на первый ход алгоритма
-        if algorithm_stat.check_first_turn(bid):
+        if algorithm_stat[table_id].check_first_turn(bid):
             logger.info(f'🔹 Первый, ход, алгоритм предлагает ставить на: {bid}')
         else:
-            # Определение Победы или Поражения алгоритма в прошлой серии
-            win_or_lose = algorithm_stat.check_win(last_win, bid)
+            # Определение Победы или Поражения алгоритма в прошлой серии или обработка Ничьи
+            win_or_lose = algorithm_stat[table_id].check_win(last_win, bid)
             if win_or_lose:
                 logger.info(f'✅ Алгоритм ПОБЕДИЛ в прошлой ставке, его статистика:')
-            else:
+            elif not win_or_lose:
                 logger.info(f'❌ Алгоритм ПРОИГРАЛ в прошлой ставке, его статистика:')
-            algorithm_stat.print_stat()
+            elif win_or_lose == 'Skip':
+                logger.info(f'🔹 Алгоритм ПРОПУСКАЛ предыдущую ставку, его статистика:')
+            algorithm_stat[table_id].print_stat()
             logger.info('-'*54)
             logger.info('Следующая ставка:')
             pattern_review(pattern, bid)
     else:
-        if pattern == 0:
-            if algorithm_stat.gamesCounter != 0:
-                if not algorithm_stat.tieStreak:
-                    if last_win == 'T':
-                        algorithm_stat.calculate_tie()
-                        logger.info(f'❌ Алгоритм ПРОИГРАЛ в прошлой ставке, его статистика:')
-                    else:
-                        # Определение Победы или Поражения алгоритма в прошлой серии
-                        win_or_lose = algorithm_stat.check_win(last_win, bid)
-                        algorithm_stat.tieStreak = True
-                        if win_or_lose:
-                            logger.info(f'✅ Алгоритм ПОБЕДИЛ в прошлой ставке, его статистика:')
-                        else:
-                            logger.info(f'❌ Алгоритм ПРОИГРАЛ в прошлой ставке, его статистика:')
-                    algorithm_stat.print_stat()
-                    logger.info('-' * 54)
-                    pattern_review(pattern, bid)
-                else:
-                    pattern_review(pattern, bid)
-            else:
-                pattern_review(pattern, bid)
-        else:
-            logger.info('⚠️ Недостаточно завершённых серий для анализа')
-            logger.info('⚠️ Алгоритм начнёт работу с восьмой завершённой серии')
+        logger.info('⚠️ Неправильное количество серий для анализа')
+        logger.info('⚠️ Алгоритм работает с восьмой по сороковую серию')
 
     logger.info('*' * 45)
 
@@ -175,8 +162,12 @@ def main_realize(data_list: list, algorithm_stat):
     result = {
         "pattern": f_pattern,
         "bid": f_bid,
-        "wins": algorithm_stat.win_lose['Wins'],
-        "loses": algorithm_stat.win_lose['Lose']
+        "wins": algorithm_stat[table_id].win_lose['Wins'],
+        "loses": algorithm_stat[table_id].win_lose['Lose'],
+        "loseStreak": algorithm_stat[table_id].loseStreak
     }
 
-    return result
+    all_tables_result[table_id] = result
+    all_tables_result['table_id'] = table_id
+
+    return all_tables_result

@@ -27,6 +27,9 @@ from playwright.sync_api import sync_playwright
 import logging
 logger = logging.getLogger(__name__)
 
+TABLE_URL = "https://riobet.com/ru/play/game/29328"
+HOME_URL = "https://riobet.com"
+
 def resource_path(relative_path):
     """
     Возвращает путь к ресурсам.
@@ -164,6 +167,8 @@ class HorizontalLabel(QWidget):
         self.dial.hide()
         self.redraw_btn.setIconSize(QSize(80, 80))
         QTimer.singleShot(2000, self.aftertime)
+        #self.tempN = 0
+        #self.redraw_btn.clicked.connect(lambda : self.rotate_dial(self.tempN))
         self.redraw_btn.raise_()
 
     def show_warning(self, type):
@@ -238,9 +243,9 @@ class HorizontalLabel(QWidget):
     def rotate_dial(self, loosestrick):
         tmp_txt = loosestrick
         new_angle = tmp_txt * 9
-
+        #self.tempN += 1
         self.dial.setAngle(new_angle, tmp_txt)
-        if tmp_txt == 5 or tmp_txt == 10 or tmp_txt == 20:
+        if tmp_txt == 6 or tmp_txt == 11 or tmp_txt == 21:
             self.show_warning("norm")
         if tmp_txt == 39:
             self.show_warning("gg")
@@ -340,9 +345,9 @@ class GreetingsPal(QWidget):
             self.playwright = sync_playwright().start()
             self.browser = self.playwright.chromium.launch(headless=False)
             self.context = self.browser.new_context()
-
             self.page = self.context.new_page()
-            self.page.goto("https://fortunazone.com/ru")
+
+            self.page.goto(HOME_URL, timeout=100000)
 
             logger.info("🔐 Необходимо войти вручную в аккаунт...")
             self.makeAus = False
@@ -385,7 +390,6 @@ class GreetingsPal(QWidget):
 
     def startThyGame(self):
         if not self.makeAus:
-            AUTH_DIR = "authentications"
             AUTH_FILE = os.path.join("authentications", "auth.json")
             self.context.storage_state(path=AUTH_FILE)
             logger.info("✅ Сессия сохранена в auth.json")
@@ -394,6 +398,7 @@ class GreetingsPal(QWidget):
 
         self.bot_thread = main_parse.BotThread()
         self.bot_thread.new_result.connect(self.parent().update_ui)
+        self.bot_thread.new_table.connect(self.parent().add_tables_btn)
         self.bot_thread.start()
 
         self.effect = QGraphicsOpacityEffect(self)
@@ -702,15 +707,15 @@ class MainWindow(QWidget):
             algs_logs_layoutWrapper.setLayout(algs_logs_layout)
             self.main_element.add_btn(algs_logs_layoutWrapper)
 
-            font_add_widget = QFont("Comfortaa", 15, QFont.Bold)
-            self.add_widget = QPushButton(self)
-            self.add_widget.setObjectName("add_widget")
-            self.add_widget.setFixedSize(500, 20)
-            self.add_widget.setStyleSheet("background-color: #443B6E; border-radius: 7px; color: white")
-            self.add_widget.setText("+")
-            self.add_widget.setFont(font_add_widget)
-            self.add_widget.clicked.connect(self.add_tables_btn)
-            self.main_element.add_btn(self.add_widget)
+            #font_add_widget = QFont("Comfortaa", 15, QFont.Bold)
+            # self.add_widget = QPushButton(self)
+            # self.add_widget.setObjectName("add_widget")
+            # self.add_widget.setFixedSize(500, 20)
+            # self.add_widget.setStyleSheet("background-color: #443B6E; border-radius: 7px; color: white")
+            # self.add_widget.setText("+")
+            # self.add_widget.setFont(font_add_widget)
+            #self.add_widget.clicked.connect(self.add_tables_btn)
+            #self.main_element.add_btn(self.add_widget)
             supermainL.addWidget(self.main_element, alignment=Qt.AlignTop)
 
             self.scroll_area = QScrollArea(self)
@@ -739,9 +744,11 @@ class MainWindow(QWidget):
             self.vertical_list_tablesWrapper = QWidget()
             self.vertical_list_tables = QVBoxLayout(self.vertical_list_tablesWrapper)
             self.scroll_area.setWidget(self.vertical_list_tablesWrapper)
-            self.tables_list = []
+
+            self.tables_dict = {}
+            self.tables_count = 0
+
             self.scroll_area.hide()
-            self.add_widget.hide()
             self.main_element.hide()
 
             self.welcomeFriend = GreetingsPal(self, mode=authentication)
@@ -762,19 +769,32 @@ class MainWindow(QWidget):
             self.logs_showing = False
 
     def mainElShow(self):
-        QTimer.singleShot(300, lambda: (self.main_element.show(), self.add_widget.show()))
+        QTimer.singleShot(300, lambda: (self.main_element.show()))
 
 
 
-    def update_ui(self, data):
+    def update_ui(self, table_data: dict):
         try:
-            self.update_pattern(data['pattern'],data['bid'])
-            self.update_stat(data['wins'],data['loses'])
 
-            loses_count = data['loses'] - data['wins']
+            if self.tables_count == 0:
+                self.tables_dict[table_data['table_id']] = 'main'
+                self.tables_count += 1
+
+            table_id = table_data['table_id']
+
+            data = table_data[table_id]
+
+
+            self.update_pattern(data['pattern'],data['bid'], table_id)
+            self.update_stat(data['wins'],data['loses'], table_id)
+
+            loses_count = data['loseStreak']
 
             if loses_count >= 0:
-                self.main_element.main_elem_circle.rotate_dial(loses_count)
+                if self.tables_dict[table_id] == 'main':
+                    self.main_element.main_elem_circle.rotate_dial(loses_count)
+                else:
+                    self.tables_dict[table_id].main_elem_circle.rotate_dial(loses_count)
 
             if self.log_window:
                 self.log_window.load_logs()
@@ -782,68 +802,127 @@ class MainWindow(QWidget):
         except Exception as e:
             logger.warning(f'Exteption: {e}')
 
-    def update_pattern(self, new_pattern, new_bid):
-        if new_pattern is not None:
-            self.main_element.pattern.setText(str(new_pattern))
-        else:
-            self.main_element.pattern.setText('Меньше 8 Серий')
-
-
-        if new_bid == 'Банкир':
-            self.main_element.color_.setText(str(new_bid))
-            self.main_element.color_.setStyleSheet("color: #ec2024;")
-        elif new_bid == 'Игрок':
-            self.main_element.color_.setText(str(new_bid))
-            self.main_element.color_.setStyleSheet("color: #2e83ff;")
-        elif new_bid == 'Не определенно':
-            self.main_element.color_.setText(str(new_bid))
-            self.main_element.color_.setStyleSheet("color: #159252;")
-        else:
-            self.main_element.color_.setText('Для анализа')
-            self.main_element.color_.setStyleSheet("color: white;")
-
-    def update_stat(self, new_w, new_l):
-        cur_w = self.main_element.win_val.text()
-        cur_l = self.main_element.lose_val.text()
+    def update_pattern(self, new_pattern, new_bid, table_id):
         try:
-            f_cur_w = int(cur_w)
-        except Exception as e:
-            temp = cur_w.split()
-            if '⭡' in temp:
-                temp.remove('⭡')
-            f_cur_w = ''.join(temp)
-        try:
-            f_cur_l = int(cur_l)
-        except Exception as e:
-            temp = cur_l.split()
-            if '⭣' in temp:
-                temp.remove('⭣')
-            f_cur_l = ''.join(temp)
+            if self.tables_dict[table_id] == 'main':
+                if new_pattern is not None:
+                    self.main_element.pattern.setText(str(new_pattern))
+                else:
+                    self.main_element.pattern.setText('Неправильный')
 
-        if f_cur_w != new_w and f_cur_l == new_l:
-            w_str = str(new_w)+'⭡'
-            l_str = str(new_l)
-        elif f_cur_w == new_w and f_cur_l != new_l:
-            w_str = str(new_w)
-            l_str = str(new_l)+'⭣'
+
+                if new_bid == 'Банкир':
+                    self.main_element.color_.setText(str(new_bid))
+                    self.main_element.color_.setStyleSheet("color: #ec2024;")
+                elif new_bid == 'Игрок':
+                    self.main_element.color_.setText(str(new_bid))
+                    self.main_element.color_.setStyleSheet("color: #2e83ff;")
+                elif new_bid == 'Не определенно':
+                    self.main_element.color_.setText('Пропуск Ставки')
+                    self.main_element.color_.setStyleSheet("color: #159252;")
+                else:
+                    self.main_element.color_.setText('диапазон серий')
+                    self.main_element.color_.setStyleSheet("color: white;")
+            else:
+                if new_pattern is not None:
+                    self.tables_dict[table_id].pattern.setText(str(new_pattern))
+                else:
+                    self.tables_dict[table_id].pattern.setText('Неправильный')
+
+                if new_bid == 'Банкир':
+                    self.tables_dict[table_id].color_.setText(str(new_bid))
+                    self.tables_dict[table_id].color_.setStyleSheet("color: #ec2024;")
+                elif new_bid == 'Игрок':
+                    self.tables_dict[table_id].color_.setText(str(new_bid))
+                    self.tables_dict[table_id].color_.setStyleSheet("color: #2e83ff;")
+                elif new_bid == 'Не определенно':
+                    self.tables_dict[table_id].color_.setText('Пропуск Ставки')
+                    self.tables_dict[table_id].color_.setStyleSheet("color: #159252;")
+                else:
+                    self.tables_dict[table_id].color_.setText('диапазон серий')
+                    self.tables_dict[table_id].color_.setStyleSheet("color: white;")
+        except Exception as e:
+            logger.warning(f'Exteption in patern: {e}')
+    def update_stat(self, new_w, new_l, table_id):
+
+        if self.tables_dict[table_id] == 'main':
+            cur_w = self.main_element.win_val.text()
+            cur_l = self.main_element.lose_val.text()
+            try:
+                f_cur_w = int(cur_w)
+            except Exception as e:
+                temp = cur_w.split()
+                if '⭡' in temp:
+                    temp.remove('⭡')
+                f_cur_w = ''.join(temp)
+            try:
+                f_cur_l = int(cur_l)
+            except Exception as e:
+                temp = cur_l.split()
+                if '⭣' in temp:
+                    temp.remove('⭣')
+                f_cur_l = ''.join(temp)
+
+            if f_cur_w != new_w and f_cur_l == new_l:
+                w_str = str(new_w)+'⭡'
+                l_str = str(new_l)
+            elif f_cur_w == new_w and f_cur_l != new_l:
+                w_str = str(new_w)
+                l_str = str(new_l)+'⭣'
+            else:
+                w_str = str(new_w)
+                l_str = str(new_l)
+            t_w_spacer = 6 - len(w_str)
+            f_w_str = ' '*t_w_spacer + w_str
+            self.main_element.win_val.setText(f_w_str)
+            self.main_element.lose_val.setText(l_str)
         else:
-            w_str = str(new_w)
-            l_str = str(new_l)
-        t_w_spacer = 6 - len(w_str)
-        f_w_str = ' '*t_w_spacer + w_str
-        self.main_element.win_val.setText(f_w_str)
-        self.main_element.lose_val.setText(l_str)
+            cur_w = self.tables_dict[table_id].win_val.text()
+            cur_l = self.tables_dict[table_id].lose_val.text()
+            try:
+                f_cur_w = int(cur_w)
+            except Exception as e:
+                temp = cur_w.split()
+                if '⭡' in temp:
+                    temp.remove('⭡')
+                f_cur_w = ''.join(temp)
+            try:
+                f_cur_l = int(cur_l)
+            except Exception as e:
+                temp = cur_l.split()
+                if '⭣' in temp:
+                    temp.remove('⭣')
+                f_cur_l = ''.join(temp)
 
-    def add_tables_btn(self):
+            if f_cur_w != new_w and f_cur_l == new_l:
+                w_str = str(new_w) + '⭡'
+                l_str = str(new_l)
+            elif f_cur_w == new_w and f_cur_l != new_l:
+                w_str = str(new_w)
+                l_str = str(new_l) + '⭣'
+            else:
+                w_str = str(new_w)
+                l_str = str(new_l)
+            t_w_spacer = 6 - len(w_str)
+            f_w_str = ' ' * t_w_spacer + w_str
+            self.tables_dict[table_id].win_val.setText(f_w_str)
+            self.tables_dict[table_id].lose_val.setText(l_str)
+
+    def add_tables_btn(self, new_table: str):
+        if self.tables_count == 0:
+            return
+
         if self.size().height() <= 400:
             self.setMaximumSize(500, self.size().height() + 170)
             self.resize(500, self.size().height() + 170)
 
-        tmp_table_obj = TableElement(self.vertical_list_tablesWrapper, cnt_=len(self.tables_list) + 2)
+        tmp_table_obj = TableElement(self.vertical_list_tablesWrapper, self.tables_count+1)
         tmp_table_obj.turn_off_borders()
         self.vertical_list_tables.addWidget(tmp_table_obj, alignment=Qt.AlignTop)
         self.vertical_list_tables.setContentsMargins(0, 0, 0, 0)
-        self.tables_list.append(tmp_table_obj)
+
+        self.tables_dict[new_table] = tmp_table_obj
+        self.tables_count += 1
         self.scroll_area.show()
 
 
